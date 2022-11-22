@@ -40,6 +40,22 @@ data VALUELANG where
 type TypeEnv = [(String,TYPELANG)]  
 type ValueEnv = [(String,VALUELANG)]
 
+--Substititon for evalM (Add missing operators)--
+subst::String -> TERMLANG -> TERMLANG -> TERMLANG
+subst i v (Num x) = (Num x)
+subst i v (Boolean b) = (Boolean b)
+subst i v (Plus l r) = (Plus (subst i v l) (subst i v r))
+subst i v (Minus l r) = (Minus (subst i v l) (subst i v r))
+subst i v (Mult l r) = (Mult (subst i v l) (subst i v r))
+subst i v (Div l r) = (Div (subst i v l) (subst i v r))
+subst i v (And l r) = (And (subst i v l) (subst i v r))
+subst i v (Or l r) = (Or (subst i v l) (subst i v r))
+subst i v (Leq l r) = (Leq (subst i v l) (subst i v r))
+subst i v (IsZero x) = (IsZero (subst i v x))
+subst i v (If c t e) = (If (subst i v c) (subst i v t) (subst i v e))
+subst i v (Id i') = if (i == i') then v else (Id i')
+subst i v (Bind i' v' b') = if (i == i') then (Bind i' (subst i v v') b')
+
 --Part 1: Type Inference --
 typeof :: TypeEnv -> TERMLANG -> (Maybe TYPELANG)
 typeof g (Num n) = if n >= 0 then return TNum else Nothing
@@ -93,11 +109,13 @@ typeof g (Bind i v b) =
     do{tv <- typeof g v;
         typeof ((i,tv):g) b}
 typeof g (Id i) = (lookup i g)
-typeof g (Fix i d b) = 
-    do {r <- typeof ((i,d):g) b;
-        if r == d
-            then return r
-            else Nothing}
+-- typeof g (Fix i d b) = 
+--     do {r <- typeof ((i,d):g) b;
+--         if r == d
+--             then return r
+--             else Nothing}
+typeof g (Fix t) = do {(d :->: r) <- typeof g t;
+					  return r}
 
 --Part 2: Evaluation --
 evalM :: ValueEnv -> TERMLANG -> (Maybe VALUELANG)
@@ -164,9 +182,12 @@ evalM e (App f a) =
 evalM e (Fix i _ (Lambda arg _ b)) = 
     let closure = (ClosureV arg b ((i,closure):e)) in
         return closure
-evalM e (Fix _ _ _) = Nothing
-    -- do {r <- evalM ((i, ClosureV i b e):e) b;
-    --     return r}
+-- evalM e (Fix _ _ _) = Nothing
+--     -- do {r <- evalM ((i, ClosureV i b e):e) b;
+--     --     return r}
+eval e (Fix f) = 
+    do {(ClosureV i b e') <- eval e f;
+        eval e' (subst i (Fix (Lambda i b)) b)}
 
 
 
