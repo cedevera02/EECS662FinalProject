@@ -1,0 +1,8 @@
+Lambda "i" (TNum) (Plus (Id "i") (Num 2))
+(App (Lambda "i" (TBool) (If (Id "i") (Num 4) (Num 5))) (Boolean False))
+(Bind "add" (Lambda "x" (TNum) (Lambda "y" (TNum) (Plus (Id "x") (Id "y")) )) (App (Id "add") (Num 5)))
+(App (Lambda "x" TNum (Plus (Id "x") (Num 1))) (Num 2))
+(Lambda "g" ((:->:) TNum TNum) (Lambda "x" (TNum) (If (IsZero (Id "x")) (Num 1) (Mult (Id "x") (App (Id "g") (Minus (Id "x") (Num 1)) ) ) ) ) )
+
+
+App (Fix "fib" (TNum :->: TNum) (Lambda "n" TNum (If (Leq (Id "n") (Num 1)) (Num 1) (Plus (App (Id "fib") (Minus (Id "n") (Num 1))) (App (Id "fib") (Minus (Id "n") (Num 2))))))) (Num 10)
