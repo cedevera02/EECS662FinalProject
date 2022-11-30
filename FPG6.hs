@@ -22,6 +22,7 @@ data TERMLANG where
   Lambda :: String -> TYPELANG -> TERMLANG -> TERMLANG
   App :: TERMLANG -> TERMLANG -> TERMLANG
   Bind :: String -> TERMLANG -> TERMLANG -> TERMLANG
+  Fix :: TERMLANG -> TERMLANG
   deriving (Show,Eq)
 
 data TYPELANG where
@@ -53,7 +54,10 @@ subst i v (Leq l r) = (Leq (subst i v l) (subst i v r))
 subst i v (IsZero x) = (IsZero (subst i v x))
 subst i v (If c t e) = (If (subst i v c) (subst i v t) (subst i v e))
 subst i v (Id i') = if (i == i') then v else (Id i')
-subst i v (Bind i' v' b') = if (i == i') then (Bind i' (subst i v v') b')
+subst i v (Bind i' v' b') = if (i == i') then (Bind i' (subst i v v') b') else (Bind i' (subst i v v') (subst i v b'))
+subst i v (Lambda i' t' b') = if (i == i') then (Lambda i' t' b') else (Lambda i' t' (subst i v b'))
+subst i v (App l r) = (App (subst i v l) (subst i v r))
+subst i v (Fix f) = (Fix (subst i v f))
 
 --Part 1: Type Inference --
 typeof :: TypeEnv -> TERMLANG -> (Maybe TYPELANG)
@@ -108,6 +112,8 @@ typeof g (Bind i v b) =
     do{tv <- typeof g v;
         typeof ((i,tv):g) b}
 typeof g (Id i) = (lookup i g)
+typeof g (Fix t) = do {(d :->: r) <- typeof g t;
+                        return r}
 
 --Part 2: Evaluation --
 evalM :: ValueEnv -> TERMLANG -> (Maybe VALUELANG)
@@ -171,8 +177,9 @@ evalM e (App f a) =
     do{(ClosureV i b j) <- evalM e f;
         a' <- evalM e a;
         evalM ((i,a'):j) b} 
-
---Part 3: Fixed Point Operator --
+evalM e (Fix f) = do
+    (ClosureV i b e') <- evalM e f
+    evalM e' (subst i (Fix f) b)
 
 --Part 4: New Language Feature --
 
