@@ -176,7 +176,9 @@ evalM e (Lambda i d b) = return (ClosureV i b e)
 evalM e (App f a) =
     do{(ClosureV i b j) <- evalM e f;
         a' <- evalM e a;
-        evalM ((i,a'):j) b} 
+        evalM ((i,a'):j) b}
+
+--Part 3: The fix operator --
 evalM e (Fix f) = do
     (ClosureV i b e') <- evalM e f
     evalM e' (subst i (Fix f) b)
@@ -184,3 +186,5 @@ evalM e (Fix f) = do
 --Part 4: New Language Feature --
 
 --Part 5: Interpretation --
+evalT :: TERMLANG -> (Maybe VALUELANG)
+evalT i = if((typeof ([]) (i)) == Nothing) then Nothing else (evalM ([]) (i))
