@@ -23,6 +23,8 @@ data TERMLANG where
   App :: TERMLANG -> TERMLANG -> TERMLANG
   Bind :: String -> TERMLANG -> TERMLANG -> TERMLANG
   Xor :: TERMLANG -> TERMLANG -> TERMLANG 
+  Nand :: TERMLANG -> TERMLANG -> TERMLANG
+  Mod :: TERMLANG -> TERMLANG -> TERMLANG
   deriving (Show,Eq)
 
 data TYPELANG where
@@ -97,6 +99,13 @@ typeof g (Xor l r) =
     do {TBool <- typeof g l;
         TBool <- typeof g r;
         return TBool}
+typeof g (Nand l r) = 
+    do {TBool <- typeof g l;
+        TBool <- typeof g r;
+        return TBool}
+typeof g (Mod l r) = do {TNum <- typeof g l;
+                        TNum <- typeof g r;
+                        return TNum}
 
 --Part 2: Evaluation --
 evalM :: ValueEnv -> TERMLANG -> (Maybe VALUELANG)
@@ -165,7 +174,18 @@ evalM e (Xor l r) =
         (BoolV r') <- evalM e r;
         if (l' == True && r' == False) then return (BoolV True)
         else if (l' == False && r' == True) then return (BoolV True)
-        else return (BoolV False)}        
+        else return (BoolV False)}   
+evalM e (Nand l r) = 
+    do {(BoolV l') <- evalM e l;
+        (BoolV r') <- evalM e r;
+        if (l' == True && r' == True) then return (BoolV False)
+        else return (BoolV True)}    
+evalM e (Mod l r) = 
+    do {(NumV l') <- evalM e l;
+        (NumV r') <- evalM e r;
+        if r' == 0 then Nothing 
+        else if (l' < r') then return (NumV l')
+        else return (NumV (l' `mod` r'))}    
 
 --Part 3: Fixed Point Operator --
 
