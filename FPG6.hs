@@ -22,6 +22,9 @@ data TERMLANG where
   Lambda :: String -> TYPELANG -> TERMLANG -> TERMLANG
   App :: TERMLANG -> TERMLANG -> TERMLANG
   Bind :: String -> TERMLANG -> TERMLANG -> TERMLANG
+  Xor :: TERMLANG -> TERMLANG -> TERMLANG 
+  Nand :: TERMLANG -> TERMLANG -> TERMLANG
+  Mod :: TERMLANG -> TERMLANG -> TERMLANG
   Fix :: TERMLANG -> TERMLANG
   deriving (Show,Eq)
 
@@ -45,10 +48,13 @@ subst::String -> TERMLANG -> TERMLANG -> TERMLANG
 subst i v (Num x) = (Num x)
 subst i v (Boolean b) = (Boolean b)
 subst i v (Plus l r) = (Plus (subst i v l) (subst i v r))
+subst i v (Mod l r) = (Mod (subst i v l) (subst i v r))
 subst i v (Minus l r) = (Minus (subst i v l) (subst i v r))
 subst i v (Mult l r) = (Mult (subst i v l) (subst i v r))
 subst i v (Div l r) = (Div (subst i v l) (subst i v r))
 subst i v (And l r) = (And (subst i v l) (subst i v r))
+subst i v (Xor l r) = (Xor (subst i v l) (subst i v r))
+subst i v (Nand l r) = (Nand (subst i v l) (subst i v r))
 subst i v (Or l r) = (Or (subst i v l) (subst i v r))
 subst i v (Leq l r) = (Leq (subst i v l) (subst i v r))
 subst i v (IsZero x) = (IsZero (subst i v x))
@@ -112,6 +118,17 @@ typeof g (Bind i v b) =
     do{tv <- typeof g v;
         typeof ((i,tv):g) b}
 typeof g (Id i) = (lookup i g)
+typeof g (Xor l r) = 
+    do {TBool <- typeof g l;
+        TBool <- typeof g r;
+        return TBool}
+typeof g (Nand l r) = 
+    do {TBool <- typeof g l;
+        TBool <- typeof g r;
+        return TBool}
+typeof g (Mod l r) = do {TNum <- typeof g l;
+                        TNum <- typeof g r;
+                        return TNum}
 typeof g (Fix t) = do {(d :->: r) <- typeof g t;
                         return r}
 
@@ -177,10 +194,27 @@ evalM e (App f a) =
     do{(ClosureV i b j) <- evalM e f;
         a' <- evalM e a;
         evalM ((i,a'):j) b} 
+evalM e (Xor l r) = 
+    do {(BoolV l') <- evalM e l;
+        (BoolV r') <- evalM e r;
+        if (l' == True && r' == False) then return (BoolV True)
+        else if (l' == False && r' == True) then return (BoolV True)
+        else return (BoolV False)}   
+evalM e (Nand l r) = 
+    do {(BoolV l') <- evalM e l;
+        (BoolV r') <- evalM e r;
+        if (l' == True && r' == True) then return (BoolV False)
+        else return (BoolV True)}    
+evalM e (Mod l r) = 
+    do {(NumV l') <- evalM e l;
+        (NumV r') <- evalM e r;
+        if r' == 0 then Nothing 
+        else if (l' < r') then return (NumV l')
+        else return (NumV (l' `mod` r'))} 
 evalM e (Fix f) = do
     (ClosureV i b e') <- evalM e f
     evalM e' (subst i (Fix f) b)
 
---Part 4: New Language Feature --
-
 --Part 5: Interpretation --
+interp :: TERMLANG -> (Maybe VALUELANG)
+interp i = if((typeof ([]) (i)) == Nothing) then Nothing else (evalM ([]) (i))
